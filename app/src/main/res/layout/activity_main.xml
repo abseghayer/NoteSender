@@ -18,6 +18,7 @@
         android:padding="16dp" />
 
     <ScrollView
+        android:id="@+id/mainScrollView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
@@ -64,11 +65,13 @@
 
             <!-- إعدادات SMTP -->
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardSmtpSettings"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="@color/card_background"
                 app:cardCornerRadius="10dp"
-                android:layout_marginBottom="12dp">
+                android:layout_marginBottom="12dp"
+                android:visibility="gone">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -206,26 +209,79 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:padding="10dp">
+                    android:orientation="vertical"
+                    android:padding="14dp">
 
-                    <CheckBox
-                        android:id="@+id/cbEmail"
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:checked="true"
-                        android:text="إرسال عبر الإيميل"
-                        android:textColor="@color/text_primary" />
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
 
-                    <CheckBox
-                        android:id="@+id/cbSms"
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
+                        <CheckBox
+                            android:id="@+id/cbEmail"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:text="إرسال عبر الإيميل"
+                            android:textColor="@color/text_primary"
+                            android:textStyle="bold" />
+
+                        <CheckBox
+                            android:id="@+id/cbSms"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:checked="false"
+                            android:text="إرسال عبر SMS"
+                            android:textColor="@color/text_primary"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- خيارات الإيميل -->
+                    <LinearLayout
+                        android:id="@+id/layoutEmailOptions"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:checked="false"
-                        android:text="إرسال عبر SMS"
-                        android:textColor="@color/text_primary" />
+                        android:orientation="vertical"
+                        android:layout_marginStart="8dp"
+                        android:visibility="visible">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="طريقة إرسال البريد الإلكتروني:"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp"
+                            android:layout_marginBottom="6dp" />
+
+                        <RadioGroup
+                            android:id="@+id/rgEmailMode"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+
+                            <RadioButton
+                                android:id="@+id/rbEmailIntent"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:checked="true"
+                                android:text="تطبيق البريد (Outlook أو غيره)"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13sp"
+                                android:buttonTint="@color/success_green" />
+
+                            <RadioButton
+                                android:id="@+id/rbEmailSmtp"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="خادم SMTP (تلقائي بالخلفية)"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13sp"
+                                android:buttonTint="@color/success_green" />
+                        </RadioGroup>
+                    </LinearLayout>
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -248,49 +304,43 @@
                 android:max="100"
                 android:progress="0" />
 
-        </LinearLayout>
-    </ScrollView>
-
-    <!-- سجل العمليات -->
-    <com.google.android.material.card.MaterialCardView
-        android:layout_width="match_parent"
-        android:layout_height="170dp"
-        app:cardBackgroundColor="@color/card_background"
-        app:cardCornerRadius="10dp"
-        android:layout_margin="16dp">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:padding="10dp">
-
-            <TextView
+            <!-- سجل العمليات -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardLogs"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="سجل العمليات:"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp"
-                android:layout_marginBottom="4dp" />
+                app:cardBackgroundColor="@color/card_background"
+                app:cardCornerRadius="10dp"
+                android:layout_marginTop="16dp"
+                android:visibility="gone">
 
-            <ScrollView
-                android:id="@+id/logScroll"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1">
-
-                <TextView
-                    android:id="@+id/tvLog"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/text_primary"
-                    android:textSize="12sp"
-                    android:textDirection="rtl"
-                    android:textAlignment="viewStart" />
+                    android:orientation="vertical"
+                    android:padding="14dp">
 
-            </ScrollView>
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="سجل العمليات:"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:id="@+id/tvLog"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text_primary"
+                        android:textSize="12sp"
+                        android:textDirection="rtl"
+                        android:textAlignment="viewStart" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+    </ScrollView>
 
 </LinearLayout>

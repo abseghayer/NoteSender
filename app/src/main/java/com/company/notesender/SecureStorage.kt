@@ -45,4 +45,8 @@ class SecureStorage(context: Context) {
     var senderPassword: String
         get() = prefs.getString("sender_password", "") ?: ""
         set(value) = prefs.edit().putString("sender_password", value).apply()
+
+    var emailMode: String
+        get() = prefs.getString("email_mode", "intent") ?: "intent"
+        set(value) = prefs.edit().putString("email_mode", value).apply()
 }

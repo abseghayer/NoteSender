@@ -1,9 +1,11 @@
 package com.company.notesender
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -13,9 +15,68 @@ import androidx.lifecycle.lifecycleScope
 import com.company.notesender.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
 
 class MainActivity : AppCompatActivity() {
+
+    private enum class IntentChoice {
+        SEND, SKIP, CANCEL
+    }
+
+    private var resumeCallback: (() -> Unit)? = null
+
+    override fun onResume() {
+        super.onResume()
+        resumeCallback?.invoke()
+        resumeCallback = null
+    }
+
+    private suspend fun waitForResume() = suspendCancellableCoroutine<Unit> { continuation ->
+        resumeCallback = {
+            if (continuation.isActive) {
+                continuation.resume(Unit)
+            }
+        }
+    }
+
+    private fun updateEmailUiSettings() {
+        val isEmailChecked = binding.cbEmail.isChecked
+        binding.layoutEmailOptions.visibility = if (isEmailChecked) View.VISIBLE else View.GONE
+        
+        if (isEmailChecked && binding.rbEmailSmtp.isChecked) {
+            binding.cardSmtpSettings.visibility = View.VISIBLE
+        } else {
+            binding.cardSmtpSettings.visibility = View.GONE
+        }
+    }
+
+    private suspend fun showEmailIntentDialog(name: String, email: String, subject: String, body: String): IntentChoice = suspendCancellableCoroutine { continuation ->
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("إرسال بريد إلكتروني (Outlook)")
+            .setMessage("من فضلك اضغط على زر الإرسال لفتح تطبيق البريد الإلكتروني وإرسال الرسالة إلى:\n\nالاسم: ${name.ifBlank { "بدون اسم" }}\nالبريد: $email\n\nبعد إرسال الرسالة أو إغلاق تطبيق البريد، يرجى العودة إلى هذا التطبيق للمتابعة تلقائياً.")
+            .setPositiveButton("فتح تطبيق البريد ✉️") { dialogInterface, _ ->
+                dialogInterface.dismiss()
+                if (continuation.isActive) continuation.resume(IntentChoice.SEND)
+            }
+            .setNeutralButton("تخطي") { dialogInterface, _ ->
+                dialogInterface.dismiss()
+                if (continuation.isActive) continuation.resume(IntentChoice.SKIP)
+            }
+            .setNegativeButton("إلغاء العملية") { dialogInterface, _ ->
+                dialogInterface.dismiss()
+                if (continuation.isActive) continuation.resume(IntentChoice.CANCEL)
+            }
+            .setCancelable(false)
+            .create()
+
+        dialog.show()
+
+        continuation.invokeOnCancellation {
+            dialog.dismiss()
+        }
+    }
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var storage: SecureStorage
@@ -61,6 +122,16 @@ class MainActivity : AppCompatActivity() {
         binding.etSmtpPort.setText(storage.smtpPort)
         binding.etSenderEmail.setText(storage.senderEmail)
         binding.etSenderPassword.setText(storage.senderPassword)
+
+        if (storage.emailMode == "smtp") {
+            binding.rbEmailSmtp.isChecked = true
+        } else {
+            binding.rbEmailIntent.isChecked = true
+        }
+        updateEmailUiSettings()
+
+        binding.cbEmail.setOnCheckedChangeListener { _, _ -> updateEmailUiSettings() }
+        binding.rgEmailMode.setOnCheckedChangeListener { _, _ -> updateEmailUiSettings() }
 
         // التأكد من أن ملف الإكسل المحفوظ من آخر مرة ما زال موجوداً ويمكن فتحه فعلياً
         restoreLastExcelFileIfAvailable()
@@ -119,7 +190,8 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        if (sendEmail) {
+        val useSmtp = sendEmail && binding.rbEmailSmtp.isChecked
+        if (useSmtp) {
             if (binding.etSenderEmail.text.isBlank() || binding.etSenderPassword.text.isBlank() ||
                 binding.etSmtpHost.text.isBlank() || binding.etSmtpPort.text.isBlank()
             ) {
@@ -133,6 +205,7 @@ class MainActivity : AppCompatActivity() {
         storage.smtpPort = binding.etSmtpPort.text.toString().trim()
         storage.senderEmail = binding.etSenderEmail.text.toString().trim()
         storage.senderPassword = binding.etSenderPassword.text.toString()
+        storage.emailMode = if (binding.rbEmailSmtp.isChecked) "smtp" else "intent"
 
         AlertDialog.Builder(this)
             .setTitle("تأكيد الإرسال")
@@ -158,7 +231,8 @@ class MainActivity : AppCompatActivity() {
         val subject = binding.etSubject.text.toString().ifBlank { "ملاحظة" }
         val messageTemplate = binding.etMessage.text.toString()
 
-        val mailer = if (sendEmail) {
+        val useSmtp = sendEmail && binding.rbEmailSmtp.isChecked
+        val mailer = if (useSmtp) {
             SmtpMailer(
                 host = binding.etSmtpHost.text.toString().trim(),
                 port = binding.etSmtpPort.text.toString().trim(),
@@ -171,6 +245,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnStart.isEnabled = false
         binding.progressBar.progress = 0
         binding.tvLog.text = ""
+        binding.cardLogs.visibility = View.VISIBLE
 
         lifecycleScope.launch {
             var sentCount = 0
@@ -198,10 +273,42 @@ class MainActivity : AppCompatActivity() {
 
                         if (sendEmail) {
                             if (person.email.contains("@")) {
-                                withContext(Dispatchers.IO) {
-                                    mailer?.send(person.email, subject, personalMessage)
+                                if (useSmtp) {
+                                    withContext(Dispatchers.IO) {
+                                        mailer?.send(person.email, subject, personalMessage)
+                                    }
+                                    didSomething = true
+                                } else {
+                                    // Intent Mode (Outlook)
+                                    val choice = showEmailIntentDialog(person.name, person.email, subject, personalMessage)
+                                    when (choice) {
+                                        IntentChoice.SEND -> {
+                                            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                                data = Uri.parse("mailto:")
+                                                putExtra(Intent.EXTRA_EMAIL, arrayOf(person.email))
+                                                putExtra(Intent.EXTRA_SUBJECT, subject)
+                                                putExtra(Intent.EXTRA_TEXT, personalMessage)
+                                            }
+                                            try {
+                                                startActivity(Intent.createChooser(intent, "اختر تطبيق البريد (Outlook)"))
+                                                log("تم فتح تطبيق البريد لـ: ${person.name.ifBlank { "بدون اسم" }} (${person.email})")
+                                                didSomething = true
+
+                                                // ننتظر عودة المستخدم للتطبيق
+                                                waitForResume()
+                                            } catch (e: Exception) {
+                                                log("خطأ في فتح تطبيق البريد لـ ${person.name.ifBlank { "بدون اسم" }}: ${e.message}")
+                                            }
+                                        }
+                                        IntentChoice.SKIP -> {
+                                            log("تم تخطي إرسال البريد لـ: ${person.name.ifBlank { "بدون اسم" }}")
+                                        }
+                                        IntentChoice.CANCEL -> {
+                                            log("تم إلغاء عملية الإرسال بطلب من المستخدم.")
+                                            break
+                                        }
+                                    }
                                 }
-                                didSomething = true
                             } else {
                                 log("تخطي بريد ${person.name.ifBlank { "بدون اسم" }}: لا يوجد إيميل صالح")
                             }
@@ -220,7 +327,9 @@ class MainActivity : AppCompatActivity() {
 
                         if (didSomething) {
                             sentCount++
-                            log("تم الإرسال إلى: ${person.name.ifBlank { "بدون اسم" }}")
+                            if (useSmtp || !sendEmail) {
+                                log("تم الإرسال إلى: ${person.name.ifBlank { "بدون اسم" }}")
+                            }
                         } else {
                             skippedCount++
                         }
@@ -247,8 +356,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun log(message: String) {
         binding.tvLog.append("• $message\n")
-        binding.logScroll.post {
-            binding.logScroll.fullScroll(android.view.View.FOCUS_DOWN)
+        binding.mainScrollView.post {
+            binding.mainScrollView.fullScroll(android.view.View.FOCUS_DOWN)
         }
     }
 }
