@@ -31,7 +31,7 @@ class SecureStorage(context: Context) {
         set(value) = prefs.edit().putString("excel_uri", value).apply()
 
     var smtpHost: String
-        get() = prefs.getString("smtp_host", "smtp.gmail.com") ?: "smtp.gmail.com"
+        get() = prefs.getString("smtp_host", "smtp.office365.com") ?: "smtp.office365.com"
         set(value) = prefs.edit().putString("smtp_host", value).apply()
 
     var smtpPort: String
@@ -47,6 +47,6 @@ class SecureStorage(context: Context) {
         set(value) = prefs.edit().putString("sender_password", value).apply()
 
     var emailMode: String
-        get() = prefs.getString("email_mode", "intent") ?: "intent"
+        get() = prefs.getString("email_mode", "smtp") ?: "smtp"
         set(value) = prefs.edit().putString("email_mode", value).apply()
 }

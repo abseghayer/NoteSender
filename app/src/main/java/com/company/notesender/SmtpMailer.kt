@@ -45,7 +45,7 @@ class SmtpMailer(
         val message = MimeMessage(session)
         message.setFrom(InternetAddress(senderEmail))
         message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail))
-        message.subject = subject
+        message.setSubject(subject, "UTF-8")
 
         // dir='rtl' يضمن عرض النص العربي بمحاذاة واتجاه صحيحين في عملاء
         // البريد التي تدعم HTML (Outlook، Gmail، ...)

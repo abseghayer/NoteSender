@@ -71,7 +71,7 @@
                 app:cardBackgroundColor="@color/card_background"
                 app:cardCornerRadius="10dp"
                 android:layout_marginBottom="12dp"
-                android:visibility="gone">
+                android:visibility="visible">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -266,7 +266,6 @@
                                 android:id="@+id/rbEmailIntent"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:checked="true"
                                 android:text="تطبيق البريد (Outlook أو غيره)"
                                 android:textColor="@color/text_primary"
                                 android:textSize="13sp"
@@ -276,6 +275,7 @@
                                 android:id="@+id/rbEmailSmtp"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
+                                android:checked="true"
                                 android:text="خادم SMTP (تلقائي بالخلفية)"
                                 android:textColor="@color/text_primary"
                                 android:textSize="13sp"
